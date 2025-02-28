@@ -15,6 +15,7 @@ if (!fs.existsSync(highlightsFile)) {
 
 app.get('/api/highlights', (req, res) => {
     const highlights = JSON.parse(fs.readFileSync(highlightsFile, 'utf8'));
+    console.log('Updated server highlights:', newHighlights);
     res.json(highlights);
 });
 
