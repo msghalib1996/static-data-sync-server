@@ -20,7 +20,7 @@ app.get('/api/highlights', (req, res) => {
 });
 
 app.post('/api/highlights', (req, res) => {
-    const newHighlights = req.body; // Correctly defined from req.body
+    const newHighlights = req.body;
     try {
         fs.writeFileSync(highlightsFile, JSON.stringify(newHighlights, null, 2));
         console.log('Updated server highlights:', newHighlights);
