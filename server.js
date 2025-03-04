@@ -10,6 +10,12 @@ app.use(express.json());
 
 const highlightsFile = path.join(__dirname, 'highlights.json');
 
+// Hardcoded users (replace with a database or secure storage in production)
+const validUsers = {
+    'admin1': 'PwrAFG@2025!',
+    'admin2': 'PwrAFG@2025@'
+};
+
 if (!fs.existsSync(highlightsFile)) {
     fs.writeFileSync(highlightsFile, JSON.stringify({ highlights: {}, removedHighlights: {} }));
 }
@@ -26,7 +32,6 @@ app.post('/api/highlights', (req, res) => {
         const currentHighlights = currentData.highlights || {};
         const currentRemovals = currentData.removedHighlights || {};
 
-        // Merge highlights
         for (const location in newHighlights) {
             if (!currentHighlights[location]) currentHighlights[location] = [];
             newHighlights[location].forEach(newH => {
@@ -38,7 +43,6 @@ app.post('/api/highlights', (req, res) => {
             });
         }
 
-        // Merge removals
         for (const location in newRemovals) {
             if (!currentRemovals[location]) currentRemovals[location] = {};
             for (const index in newRemovals[location]) {
@@ -53,7 +57,6 @@ app.post('/api/highlights', (req, res) => {
             }
         }
 
-        // Clean up empty locations
         for (const location in currentHighlights) {
             if (currentHighlights[location].length === 0) delete currentHighlights[location];
         }
@@ -63,11 +66,33 @@ app.post('/api/highlights', (req, res) => {
 
         const updatedData = { highlights: currentHighlights, removedHighlights: currentRemovals };
         fs.writeFileSync(highlightsFile, JSON.stringify(updatedData, null, 2));
-        console.log('Updated server data:', updatedData);
         res.json({ status: 'success' });
     } catch (error) {
         console.error('Error writing highlights:', error);
         res.status(500).json({ status: 'error', message: 'Failed to save highlights' });
+    }
+});
+
+// New login endpoint
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    if (validUsers[username] && validUsers[username] === password) {
+        // Simple token (for simplicity; use JWT in production)
+        const token = `${username}-${Date.now()}`;
+        res.json({ status: 'success', token });
+    } else {
+        res.status(401).json({ status: 'error', message: 'Invalid credentials' });
+    }
+});
+
+// Token validation endpoint
+app.post('/api/validate-token', (req, res) => {
+    const { token } = req.body;
+    // For this simple example, just check if token exists and is in format username-timestamp
+    if (token && token.split('-').length === 2) {
+        res.json({ status: 'success' });
+    } else {
+        res.status(401).json({ status: 'error', message: 'Invalid token' });
     }
 });
 
