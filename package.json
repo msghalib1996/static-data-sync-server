@@ -1,5 +1,5 @@
 {
-    "name": "data-search-server",
+    "name": "static-data-sync-server",
     "version": "1.0.0",
     "main": "server.js",
     "scripts": {

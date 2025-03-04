@@ -7,62 +7,75 @@ const fs = require('fs');
 const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SECRET_KEY = process.env.SECRET_KEY || 'your-secret-key'; // Use env var in production
+const SECRET_KEY = process.env.SECRET_KEY || 'your-secret-key123456'; // Use env var in production
 const HIGHLIGHTS_FILE = path.join(__dirname, 'highlights.json');
 
-app.use(cors({ origin: '*' })); // Allow all origins for simplicity (restrict in production)
+app.use(cors({ origin: '*' })); // Allow all origins (restrict in production)
 app.use(bodyParser.json());
 
 // Mock user database
 const users = [
-    { username: 'admin1', password: bcryptjs.hashSync('PwrAFG@2025!', 10) },
-    { username: 'admin2', password: bcryptjs.hashSync('PwrAFG@2025@', 10) },
-    { username: 'admin3', password: bcryptjs.hashSync('adminpass#', 10) } // Added admin1
+    { username: 'user1', password: bcryptjs.hashSync('password1', 10) },
+    { username: 'user2', password: bcryptjs.hashSync('password2', 10) },
+    { username: 'admin1', password: bcryptjs.hashSync('adminpass', 10) }
 ];
 
 // Initialize highlights file
 if (!fs.existsSync(HIGHLIGHTS_FILE)) {
+    console.log('Creating highlights.json');
     fs.writeFileSync(HIGHLIGHTS_FILE, JSON.stringify({ highlights: {}, removedHighlights: {} }));
 }
 
-// Health check endpoint
+// Health check
 app.get('/health', (req, res) => {
-    res.json({ status: 'Server is running' });
+    console.log('Health check requested');
+    res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
 });
 
 // Login endpoint
 app.post('/login', async (req, res) => {
+    console.log('Login request received:', req.body);
     try {
         const { username, password } = req.body;
         if (!username || !password) {
+            console.log('Missing username or password');
             return res.status(400).json({ message: 'Username and password are required' });
         }
         const user = users.find(u => u.username === username);
-        if (user && await bcryptjs.compare(password, user.password)) {
+        if (!user) {
+            console.log(`User ${username} not found`);
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+        const isMatch = await bcryptjs.compare(password, user.password);
+        if (isMatch) {
             const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
+            console.log(`Login successful for ${username}`);
             res.json({ token });
         } else {
+            console.log(`Invalid password for ${username}`);
             res.status(401).json({ message: 'Invalid credentials' });
         }
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error('Login error:', error.message);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 });
 
 // Highlights endpoints
 app.get('/api/highlights', (req, res) => {
     try {
+        console.log('GET /api/highlights requested');
         const data = JSON.parse(fs.readFileSync(HIGHLIGHTS_FILE, 'utf8'));
         res.json(data);
     } catch (error) {
-        console.error('Error reading highlights:', error);
-        res.status(500).json({ message: 'Failed to read highlights' });
+        console.error('Error reading highlights:', error.message);
+        res.status(500).json({ message: 'Failed to read highlights', error: error.message });
     }
 });
 
 app.post('/api/highlights', (req, res) => {
     try {
+        console.log('POST /api/highlights received:', req.body);
         const { highlights: newHighlights, removedHighlights: newRemovals } = req.body;
         const currentData = JSON.parse(fs.readFileSync(HIGHLIGHTS_FILE, 'utf8'));
         const currentHighlights = currentData.highlights || {};
@@ -102,10 +115,11 @@ app.post('/api/highlights', (req, res) => {
 
         const updatedData = { highlights: currentHighlights, removedHighlights: currentRemovals };
         fs.writeFileSync(HIGHLIGHTS_FILE, JSON.stringify(updatedData, null, 2));
+        console.log('Highlights updated successfully');
         res.json({ status: 'success' });
     } catch (error) {
-        console.error('Error writing highlights:', error);
-        res.status(500).json({ message: 'Failed to save highlights' });
+        console.error('Error writing highlights:', error.message);
+        res.status(500).json({ message: 'Failed to save highlights', error: error.message });
     }
 });
 
